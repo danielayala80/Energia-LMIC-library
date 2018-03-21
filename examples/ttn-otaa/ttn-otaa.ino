@@ -60,10 +60,10 @@ const unsigned TX_INTERVAL = 60;
 
 // Pin mapping
 const lmic_pinmap lmic_pins = {
-    .nss = 6,
-    .rxtx = LMIC_UNUSED_PIN,
-    .rst = 5,
-    .dio = {2, 3, 4},
+    6,   //nss
+    LMIC_UNUSED_PIN,    //rxtx
+    5,  //rst
+    {2, 3, 4},  //dio
 };
 
 void onEvent (ev_t ev) {

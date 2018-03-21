@@ -1,3 +1,14 @@
+Energia-LMIC
+============
+
+A tentative to make the Arduino-LMIC library work in Energia so that
+MSP430 can also be used easily to talk LoraWAN / The Things Network.
+For more information on Energia, see http://energia.nu
+
+Work in progress !
+ 
+Original ReadMe from https://github.com/matthijskooijman/arduino-lmic :
+
 Arduino-LMIC library
 ====================
 This repository contains the IBM LMIC (LoraMAC-in-C) library, slightly

@@ -113,9 +113,11 @@ u1_t os_getBattLevel (void) {
 u2_t os_crc16 (xref2u1_t data, uint len) {
     u2_t remainder = 0;
     u2_t polynomial = 0x1021;
-    for( uint i = 0; i < len; i++ ) {
+    uint i;
+    for( i = 0; i < len; i++ ) {
         remainder ^= data[i] << 8;
-        for( u1_t bit = 8; bit > 0; bit--) {
+        u1_t bit;
+        for( bit = 8; bit > 0; bit--) {
             if( (remainder & 0x8000) )
                 remainder = (remainder << 1) ^ polynomial;
             else
@@ -316,28 +318,31 @@ ostime_t calcAirTime (rps_t rps, u1_t plen) {
     return (((ostime_t)tmp << sfx) * OSTICKS_PER_SEC + div/2) / div;
 }
 
-extern inline rps_t updr2rps (dr_t dr);
-extern inline rps_t dndr2rps (dr_t dr);
-extern inline int isFasterDR (dr_t dr1, dr_t dr2);
-extern inline int isSlowerDR (dr_t dr1, dr_t dr2);
-extern inline dr_t  incDR    (dr_t dr);
-extern inline dr_t  decDR    (dr_t dr);
-extern inline dr_t  assertDR (dr_t dr);
-extern inline dr_t  validDR  (dr_t dr);
-extern inline dr_t  lowerDR  (dr_t dr, u1_t n);
+inline rps_t updr2rps (dr_t dr) { return (rps_t)TABLE_GET_U1(_DR2RPS_CRC, dr+1); }
+inline rps_t dndr2rps (dr_t dr) { return setNocrc(updr2rps(dr),1); }
+inline int isFasterDR (dr_t dr1, dr_t dr2) { return dr1 > dr2; }
+inline int isSlowerDR (dr_t dr1, dr_t dr2) { return dr1 < dr2; }
+inline dr_t  incDR    (dr_t dr) { return TABLE_GET_U1(_DR2RPS_CRC, dr+2)==ILLEGAL_RPS ? dr : (dr_t)(dr+1); } // increase data rate
+inline dr_t  decDR    (dr_t dr) { return TABLE_GET_U1(_DR2RPS_CRC, dr  )==ILLEGAL_RPS ? dr : (dr_t)(dr-1); } // decrease data rate
+inline dr_t  assertDR (dr_t dr) { return TABLE_GET_U1(_DR2RPS_CRC, dr+1)==ILLEGAL_RPS ? DR_DFLTMIN : dr; }   // force into a valid DR
+inline bit_t validDR  (dr_t dr) { return TABLE_GET_U1(_DR2RPS_CRC, dr+1)!=ILLEGAL_RPS; } // in range
+inline dr_t  lowerDR  (dr_t dr, u1_t n) { while(n--){dr=decDR(dr);} return dr; } // decrease data rate by n steps
 
-extern inline sf_t  getSf    (rps_t params);
-extern inline rps_t setSf    (rps_t params, sf_t sf);
-extern inline bw_t  getBw    (rps_t params);
-extern inline rps_t setBw    (rps_t params, bw_t cr);
-extern inline cr_t  getCr    (rps_t params);
-extern inline rps_t setCr    (rps_t params, cr_t cr);
-extern inline int   getNocrc (rps_t params);
-extern inline rps_t setNocrc (rps_t params, int nocrc);
-extern inline int   getIh    (rps_t params);
-extern inline rps_t setIh    (rps_t params, int ih);
-extern inline rps_t makeRps  (sf_t sf, bw_t bw, cr_t cr, int ih, int nocrc);
-extern inline int   sameSfBw (rps_t r1, rps_t r2);
+inline sf_t  getSf   (rps_t params)            { return   (sf_t)(params &  0x7); }
+inline rps_t setSf   (rps_t params, sf_t sf)   { return (rps_t)((params & ~0x7) | sf); }
+inline bw_t  getBw   (rps_t params)            { return  (bw_t)((params >> 3) & 0x3); }
+inline rps_t setBw   (rps_t params, bw_t cr)   { return (rps_t)((params & ~0x18) | (cr<<3)); }
+inline cr_t  getCr   (rps_t params)            { return  (cr_t)((params >> 5) & 0x3); }
+inline rps_t setCr   (rps_t params, cr_t cr)   { return (rps_t)((params & ~0x60) | (cr<<5)); }
+inline int   getNocrc(rps_t params)            { return        ((params >> 7) & 0x1); }
+inline rps_t setNocrc(rps_t params, int nocrc) { return (rps_t)((params & ~0x80) | (nocrc<<7)); }
+inline int   getIh   (rps_t params)            { return        ((params >> 8) & 0xFF); }
+inline rps_t setIh   (rps_t params, int ih)    { return (rps_t)((params & ~0xFF00) | (ih<<8)); }
+inline rps_t makeRps (sf_t sf, bw_t bw, cr_t cr, int ih, int nocrc) {
+    return sf | (bw<<3) | (cr<<5) | (nocrc?(1<<7):0) | ((ih&0xFF)<<8);
+} 
+// Two frames with params r1/r2 would interfere on air: same SFx + BWx
+inline int sameSfBw(rps_t r1, rps_t r2) { return ((r1^r2)&0x1F) == 0; }
 
 // END LORA
 // ================================================================================
@@ -549,7 +554,8 @@ static void initDefaultChannels (bit_t join) {
 
     LMIC.channelMap = 0x07;
     u1_t su = join ? 0 : 3;
-    for( u1_t fu=0; fu<3; fu++,su++ ) {
+    u1_t fu;
+    for( fu=0; fu<3; fu++,su++ ) {
         LMIC.channelFreq[fu]  = TABLE_GET_U4(iniChannelFreq, su);
         LMIC.channelDrMap[fu] = DR_RANGE_MAP(DR_SF12,DR_SF7);
     }
@@ -616,7 +622,8 @@ static u1_t mapChannels (u1_t chpage, u2_t chmap) {
     // Bad page, disable all channel, enable non-existent
     if( chpage != 0 || chmap==0 || (chmap & ~LMIC.channelMap) != 0 )
         return 0;  // illegal input
-    for( u1_t chnl=0; chnl<MAX_CHANNELS; chnl++ ) {
+    u1_t chnl;
+    for( chnl=0; chnl<MAX_CHANNELS; chnl++ ) {
         if( (chmap & (1<<chnl)) != 0 && LMIC.channelFreq[chnl] == 0 )
             chmap &= ~(1<<chnl); // ignore - channel is not defined
     }
@@ -648,7 +655,8 @@ static ostime_t nextTx (ostime_t now) {
     do {
         ostime_t mintime = now + /*8h*/sec2osticks(28800);
         u1_t band=0;
-        for( u1_t bi=0; bi<4; bi++ ) {
+        u1_t bi;
+        for( bi=0; bi<4; bi++ ) {
             if( (bmap & (1<<bi)) && mintime - LMIC.bands[bi].avail > 0 ) {
                 #if LMIC_DEBUG_LEVEL > 1
                     lmic_printf("%lu: Considering band %d, which is available at %lu\n", os_getTime(), bi, LMIC.bands[bi].avail);
@@ -658,7 +666,8 @@ static ostime_t nextTx (ostime_t now) {
         }
         // Find next channel in given band
         u1_t chnl = LMIC.bands[band].lastchnl;
-        for( u1_t ci=0; ci<MAX_CHANNELS; ci++ ) {
+        u1_t ci;
+        for( ci=0; ci<MAX_CHANNELS; ci++ ) {
             if( (chnl = (chnl+1)) >= MAX_CHANNELS )
                 chnl -=  MAX_CHANNELS;
             if( (LMIC.channelMap & (1<<chnl)) != 0  &&  // channel enabled
@@ -751,7 +760,8 @@ static ostime_t nextJoinState (void) {
 
 
 static void initDefaultChannels (void) {
-    for( u1_t i=0; i<4; i++ )
+    u1_t i;
+    for( i=0; i<4; i++ )
         LMIC.channelMap[i] = 0xFFFF;
     LMIC.channelMap[4] = 0x00FF;
 }
@@ -810,7 +820,8 @@ void  LMIC_selectSubBand (u1_t band) {
 static u1_t mapChannels (u1_t chpage, u2_t chmap) {
     if( chpage == MCMD_LADR_CHP_125ON || chpage == MCMD_LADR_CHP_125OFF ) {
         u2_t en125 = chpage == MCMD_LADR_CHP_125ON ? 0xFFFF : 0x0000;
-        for( u1_t u=0; u<4; u++ )
+        u1_t u;
+        for( u=0; u<4; u++ )
             LMIC.channelMap[u] = en125;
         LMIC.channelMap[64/16] = chmap;
     } else {
@@ -848,16 +859,17 @@ static void updateTx (ostime_t txbeg) {
 static void _nextTx (void) {
     if( LMIC.chRnd==0 )
         LMIC.chRnd = os_getRndU1() & 0x3F;
+    u1_t i;
     if( LMIC.datarate >= DR_SF8C ) { // 500kHz
         u1_t map = LMIC.channelMap[64/16]&0xFF;
-        for( u1_t i=0; i<8; i++ ) {
+        for( i=0; i<8; i++ ) {
             if( (map & (1<<(++LMIC.chRnd & 7))) != 0 ) {
                 LMIC.txChnl = 64 + (LMIC.chRnd & 7);
                 return;
             }
         }
     } else { // 125kHz
-        for( u1_t i=0; i<64; i++ ) {
+        for( i=0; i<64; i++ ) {
             u1_t chnl = ++LMIC.chRnd & 0x3F;
             if( (LMIC.channelMap[(chnl >> 4)] & (1<<(chnl & 0xF))) != 0 ) {
                 LMIC.txChnl = chnl;
@@ -1495,7 +1507,8 @@ static bit_t processJoinAccept (void) {
         goto badframe;
 #endif
         dlen = OFF_CFLIST;
-        for( u1_t chidx=3; chidx<8; chidx++, dlen+=3 ) {
+        u1_t chidx;
+        for( chidx=3; chidx<8; chidx++, dlen+=3 ) {
             u4_t freq = convFreq(&LMIC.frame[dlen]);
             if( freq ) {
                 LMIC_setupChannel(chidx, freq, 0, -1);

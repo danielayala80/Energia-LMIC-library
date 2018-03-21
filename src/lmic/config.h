@@ -16,6 +16,8 @@
 
 // 16 μs per tick
 // LMIC requires ticks to be 15.5μs - 100 μs long
+// also values for US_PER_OSTICK_EXPONENT should be included in the 0..8
+//  interval, see u4_t hal_ticks() in ../hal/hal.cpp
 #define US_PER_OSTICK_EXPONENT 4
 #define US_PER_OSTICK (1 << US_PER_OSTICK_EXPONENT)
 #define OSTICKS_PER_SEC (1000000 / US_PER_OSTICK)

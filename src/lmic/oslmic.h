@@ -212,14 +212,14 @@ u2_t os_crc16 (xref2u1_t d, uint len);
 #define RESOLVE_TABLE(table) constant_table_ ## table
 
 // Accessors for table elements
-#define TABLE_GET_U1(table, index) table_get_u1(RESOLVE_TABLE(table), index)
-#define TABLE_GET_S1(table, index) table_get_s1(RESOLVE_TABLE(table), index)
-#define TABLE_GET_U2(table, index) table_get_u2(RESOLVE_TABLE(table), index)
-#define TABLE_GET_S2(table, index) table_get_s2(RESOLVE_TABLE(table), index)
-#define TABLE_GET_U4(table, index) table_get_u4(RESOLVE_TABLE(table), index)
-#define TABLE_GET_S4(table, index) table_get_s4(RESOLVE_TABLE(table), index)
-#define TABLE_GET_OSTIME(table, index) table_get_ostime(RESOLVE_TABLE(table), index)
-#define TABLE_GET_U1_TWODIM(table, index1, index2) table_get_u1(RESOLVE_TABLE(table)[index1], index2)
+#define TABLE_GET_U1(table, index) RESOLVE_TABLE(table)[index]
+#define TABLE_GET_S1(table, index) RESOLVE_TABLE(table)[index]
+#define TABLE_GET_U2(table, index) RESOLVE_TABLE(table)[index]
+#define TABLE_GET_S2(table, index) RESOLVE_TABLE(table)[index]
+#define TABLE_GET_U4(table, index) RESOLVE_TABLE(table)[index]
+#define TABLE_GET_S4(table, index) RESOLVE_TABLE(table)[index]
+#define TABLE_GET_OSTIME(table, index) RESOLVE_TABLE(table)[index]
+#define TABLE_GET_U1_TWODIM(table, index1, index2) RESOLVE_TABLE(table)[index1][index2]
 
 #if defined(__AVR__)
     #include <avr/pgmspace.h>
@@ -249,14 +249,6 @@ u2_t os_crc16 (xref2u1_t d, uint len);
 
     #define lmic_printf(fmt, ...) printf_P(PSTR(fmt), ## __VA_ARGS__)
 #else
-    inline u1_t table_get_u1(const u1_t *table, size_t index) { return table[index]; }
-    inline s1_t table_get_s1(const s1_t *table, size_t index) { return table[index]; }
-    inline u2_t table_get_u2(const u2_t *table, size_t index) { return table[index]; }
-    inline s2_t table_get_s2(const s2_t *table, size_t index) { return table[index]; }
-    inline u4_t table_get_u4(const u4_t *table, size_t index) { return table[index]; }
-    inline s4_t table_get_s4(const s4_t *table, size_t index) { return table[index]; }
-    inline ostime_t table_get_ostime(const ostime_t *table, size_t index) { return table[index]; }
-
     // Declare a table
     #define CONST_TABLE(type, name) const type RESOLVE_TABLE(name)
     #define lmic_printf printf
