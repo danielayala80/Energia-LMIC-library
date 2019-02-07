@@ -559,12 +559,12 @@ static void initDefaultChannels (bit_t join) {
         LMIC.channelFreq[fu]  = TABLE_GET_U4(iniChannelFreq, su);
         LMIC.channelDrMap[fu] = DR_RANGE_MAP(DR_SF12,DR_SF7);
     }
-
+    //La variable TXPOW se asigna aqui y no se modifica con otras instrucciones
     LMIC.bands[BAND_MILLI].txcap    = 1000;  // 0.1%
     LMIC.bands[BAND_MILLI].txpow    = 14;
     LMIC.bands[BAND_MILLI].lastchnl = os_getRndU1() % MAX_CHANNELS;
     LMIC.bands[BAND_CENTI].txcap    = 100;   // 1%
-    LMIC.bands[BAND_CENTI].txpow    = 14;
+    LMIC.bands[BAND_CENTI].txpow    = 0;   //Aqui hay algo
     LMIC.bands[BAND_CENTI].lastchnl = os_getRndU1() % MAX_CHANNELS;
     LMIC.bands[BAND_DECI ].txcap    = 10;    // 10%
     LMIC.bands[BAND_DECI ].txpow    = 27;
